@@ -1,0 +1,30 @@
+{
+  "name": "risehash",
+  "version": "0.1.0",
+  "description": "An application that stores all data concerning RISE delegates' performance and tools to analyse such data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newtmex/risehash.git"
+  },
+  "keywords": [
+    "rise",
+    "blockchain",
+    "delegates",
+    "dpos"
+  ],
+  "author": "Levi Chimezie",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/newtmex/risehash/issues"
+  },
+  "homepage": "https://github.com/newtmex/risehash#readme",
+  "dependencies": {
+    "bignumber.js": "^8.0.1",
+    "mongoose": "^5.4.2",
+    "risejs": "^1.4.1"
+  }
+}
