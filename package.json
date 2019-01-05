@@ -2,7 +2,7 @@
   "name": "risehash",
   "version": "0.1.0",
   "description": "An application that stores all data concerning RISE delegates' performance and tools to analyse such data.",
-  "main": "index.js",
+  "main": "risehash_app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
