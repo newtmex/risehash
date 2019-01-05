@@ -24,6 +24,7 @@
   "homepage": "https://github.com/newtmex/risehash#readme",
   "dependencies": {
     "bignumber.js": "^8.0.1",
+    "moment": "^2.23.0",
     "mongoose": "^5.4.2",
     "risejs": "^1.4.1"
   }
