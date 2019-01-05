@@ -1,12 +1,14 @@
 const moment = require('moment');
 
 function Logger (){
-  this.log = function (info){
-    return console.log(`${moment().format()}: ${info}`);
+  this.log = function (){
+    let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    return console.log(...args);
   }
 
-  this.error = function (info){
-    return console.error(`${moment().format()}: ${info}`);
+  this.error = function (){
+    let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    return console.log(...args);
   }
 }
 module.exports = new Logger()

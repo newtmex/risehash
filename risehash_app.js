@@ -1,6 +1,6 @@
 const logger = require('./logger');
 
-logger.log('Starting app');
+logger.log('Starting app\n\n');
 
 const rise = require('risejs').rise;
 const BigNumber = require('bignumber.js');
@@ -22,7 +22,7 @@ const RETRY_INTERVAL = 120000
 
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
-let lastOpenNodes_index = 0;
+let lastOpenNodes_index = 3;
 const openNodes = require('./test/openNodes');
 rise.nodeAddress = process.env.NODE_ENV == 'production' ?
   'http://localhost:5555' :
@@ -107,7 +107,7 @@ function getSnapshot() {
         let snapshot = new Snapshot({ round, delegates });
         logger.log('Saving snapshot..')
         snapshot.save((err, snapshot) => {
-          if (err) return logger.log('Failed to save snapshot');
+          if (err) return logger.log('Failed to save snapshot:', err.errmsg);
           logger.log('Snapshot saved')
         });
         // Run again after the next round
