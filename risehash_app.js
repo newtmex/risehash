@@ -18,6 +18,7 @@ const N = 101; // Number of forgers per round
 const M = 199; // Least rank to select forgers from
 const blockTime = 30000; // block time in milliseconds
 const roundInterval = N * blockTime;
+const RETRY_INTERVAL = 120000
 
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
@@ -111,13 +112,19 @@ function getSnapshot() {
         setTimeout(getSnapshot, roundInterval);
       }).catch(err => {
         // Send an email to levi@techypharm.com about the error
-        logger.log(err)
+        logger.error(err);
+        logger.log('Retrying..');
+        setTimeout(getSnapshot, RETRY_INTERVAL);
       })
     }
     logger.error('Failed to get blocks..')
     // Retry
     logger.log('Retrying..')
     getSnapshot()
+  }).catch(err => {
+    logger.error(err);
+    logger.log('Retrying..');
+    setTimeout(getSnapshot, RETRY_INTERVAL);
   })
 }
 
