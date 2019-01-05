@@ -1,10 +1,12 @@
+const moment = require('moment');
+
 function Logger (){
   this.log = function (info){
-    return console.log(`${new Date().toString()}: ${info}`);
+    return console.log(`${moment().format()}: ${info}`);
   }
 
   this.error = function (info){
-    return console.error(`${new Date().toString()}: ${info}`);
+    return console.error(`${moment().format()}: ${info}`);
   }
 }
 module.exports = new Logger()
