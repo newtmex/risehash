@@ -7,9 +7,9 @@ const mongoose = require('mongoose');
 
 mongoose.connect('mongodb://localhost/risehash', { useNewUrlParser: true });
 let Snapshot = mongoose.model('Snapshot', new mongoose.Schema({
-  round: { type: Number, required: true },
+  round: { type: Number, required: true, unique: true },
   createdAt: { type: Date, default: Date.now },
-  delegates: [mongoose.Mixed]
+  delegates: { type: [mongoose.Mixed], required: true }
 }))
 
 const N = 101; // Number of forgers per round
