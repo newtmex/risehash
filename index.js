@@ -1,3 +1,5 @@
+console.log('Starting app');
+
 const rise = require('risejs').rise;
 const BigNumber = require('bignumber.js');
 const fs = require('fs');
@@ -19,8 +21,8 @@ const roundInterval = N * blockTime;
 // or use localhost if in production
 const openNodes = require('./test/openNodes');
 rise.nodeAddress = process.env.NODE_ENV == 'production' ?
-   'http://localhost:5555' :
-    openNodes[2];
+  'http://localhost:5555' :
+  openNodes[2];
 
 const cache = {}; // calcPercentageV2 uses this
 /**
@@ -80,21 +82,29 @@ function calcPercentageV2(delegates) {
 };
 
 function getSnapshot() {
+  console.log('Getting new snapshot..')
   rise.blocks.getHeight().then(res => {
     if (res.success) {
       let round = Math.ceil(res.height / N);
       return rise.delegates.getList({
         limit: M // Limit to the current least ranking currently allowed to be selected
       }).then(res => {
+        console.log('Delegates data gotten..')
         let delegates = calcPercentageV2(res.delegates);
+        console.log('Adding new params to delegates')
         // Add new parameters to the delegates
         delegates.forEach(delegate => {
           delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks
           delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks
         })
+        console.log('Params added..')
         // Store the snapshot
         let snapshot = new Snapshot({ round, delegates });
-        snapshot.save();
+        console.log('Saving snapshot..')
+        snapshot.save((err, snapshot) => {
+          if (err) return console.log('Failed to save snapshot');
+          console.log('Snapshot saved')
+        });
         // Run again after the next round
         setTimeout(getSnapshot, roundInterval);
       }).catch(err => {
@@ -102,7 +112,9 @@ function getSnapshot() {
         console.log(err)
       })
     }
+    console.error('Failed to get blocks..')
     // Retry
+    console.log('Retrying..')
     getSnapshot()
   })
 }
