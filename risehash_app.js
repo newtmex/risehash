@@ -22,12 +22,14 @@ const RETRY_INTERVAL = 120000
 
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
+let lastOpenNodes_index = 0;
 const openNodes = require('./test/openNodes');
-rise.nodeAddress = process.env.NODE_ENV == 'deve' ?
+rise.nodeAddress = process.env.NODE_ENV == 'production' ?
   'http://localhost:5555' :
-  openNodes[2];
+  openNodes[lastOpenNodes_index];
 
 const cache = {}; // calcPercentageV2 uses this
+
 /**
  * This function was copied from the RISE explorer
  * @param {*} delegates 
@@ -113,8 +115,7 @@ function getSnapshot() {
       }).catch(err => {
         // Send an email to levi@techypharm.com about the error
         logger.error(err);
-        logger.log('Retrying..');
-        setTimeout(getSnapshot, RETRY_INTERVAL);
+        retry_getSnapshot();
       })
     }
     logger.error('Failed to get blocks..')
@@ -123,9 +124,28 @@ function getSnapshot() {
     getSnapshot()
   }).catch(err => {
     logger.error(err);
-    logger.log('Retrying..');
-    setTimeout(getSnapshot, RETRY_INTERVAL);
+    retry_getSnapshot()
   })
 }
 
+/**
+ * This is used to retry querring the apis,
+ * after an error occurs...that is a catch block on the Promise.
+ * cycling through all the available options
+ */
+function retry_getSnapshot() {
+  // Cycle through avail node options
+  lastOpenNodes_index++;
+  if (lastOpenNodes_index >= openNodes.length) {
+    rise.nodeAddress = 'http://localhost:5555';
+    lastOpenNodes_index = -1; // Set to -1 so that when nretry_getSnapshot() is called, the value of lastOpenNodes_index will be 0
+  } else {
+    rise.nodeAddress = openNodes[lastOpenNodes_index]
+  }
+
+  logger.log('Retrying..@index:', lastOpenNodes_index, 'openNodes.length is', openNodes.length);
+  setTimeout(getSnapshot, RETRY_INTERVAL);
+}
+
+// Start
 getSnapshot();
