@@ -23,7 +23,7 @@ const RETRY_INTERVAL = 120000
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
 const openNodes = require('./test/openNodes');
-rise.nodeAddress = process.env.NODE_ENV == 'production' ?
+rise.nodeAddress = process.env.NODE_ENV == 'deve' ?
   'http://localhost:5555' :
   openNodes[2];
 
