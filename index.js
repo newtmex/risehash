@@ -1,4 +1,6 @@
-console.log('Starting app');
+const logger = require('./logger');
+
+logger.log('Starting app');
 
 const rise = require('risejs').rise;
 const BigNumber = require('bignumber.js');
@@ -82,39 +84,39 @@ function calcPercentageV2(delegates) {
 };
 
 function getSnapshot() {
-  console.log('Getting new snapshot..')
+  logger.log('Getting new snapshot..')
   rise.blocks.getHeight().then(res => {
     if (res.success) {
       let round = Math.ceil(res.height / N);
       return rise.delegates.getList({
         limit: M // Limit to the current least ranking currently allowed to be selected
       }).then(res => {
-        console.log('Delegates data gotten..')
+        logger.log('Delegates data gotten..')
         let delegates = calcPercentageV2(res.delegates);
-        console.log('Adding new params to delegates')
+        logger.log('Adding new params to delegates')
         // Add new parameters to the delegates
         delegates.forEach(delegate => {
           delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks
           delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks
         })
-        console.log('Params added..')
+        logger.log('Params added..')
         // Store the snapshot
         let snapshot = new Snapshot({ round, delegates });
-        console.log('Saving snapshot..')
+        logger.log('Saving snapshot..')
         snapshot.save((err, snapshot) => {
-          if (err) return console.log('Failed to save snapshot');
-          console.log('Snapshot saved')
+          if (err) return logger.log('Failed to save snapshot');
+          logger.log('Snapshot saved')
         });
         // Run again after the next round
         setTimeout(getSnapshot, roundInterval);
       }).catch(err => {
         // Send an email to levi@techypharm.com about the error
-        console.log(err)
+        logger.log(err)
       })
     }
-    console.error('Failed to get blocks..')
+    logger.error('Failed to get blocks..')
     // Retry
-    console.log('Retrying..')
+    logger.log('Retrying..')
     getSnapshot()
   })
 }
