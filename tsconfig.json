@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "module": "CommonJS",
+    "removeComments": true,
+    "target": "es6"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "dist",
+    "ideas",
+    "node_modules"
+  ]
+}

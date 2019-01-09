@@ -1,41 +1,20 @@
-const logger = require('./logger');
+import { rise } from "risejs";
+import { BigNumber } from 'bignumber.js';
+import { ChainConfig } from './enums';
+import { logger } from './services/logger'
+import { DelegateStats, IDelegate } from "./interfaces/Delegate.interface";
+import { Snapshot } from "./models/Snapshot.model";
+import { OpenNodes } from "./openNodes";
 
-logger.log('Starting app\n\n');
-
-const rise = require('risejs').rise;
-const BigNumber = require('bignumber.js');
-const fs = require('fs');
-const mongoose = require('mongoose');
-
-mongoose.connect('mongodb://localhost/risehash', { useNewUrlParser: true });
-let Snapshot = mongoose.model('Snapshot', new mongoose.Schema({
-  round: { type: Number, required: true, unique: true },
-  createdAt: { type: Date, default: Date.now },
-  delegates: { type: [mongoose.Mixed], required: true }
-}))
-
-const N = 101; // Number of forgers per round
-const M = 199; // Least rank to select forgers from
-const blockTime = 30000; // block time in milliseconds
-const roundInterval = N * blockTime;
-const RETRY_INTERVAL = 120000
-
-// Select one of the nodes that their api is enabled
-// or use localhost if in production
-let lastOpenNodes_index = 3;
-const openNodes = require('./test/openNodes');
-rise.nodeAddress = process.env.NODE_ENV == 'production' ?
-  'http://localhost:5555' :
-  openNodes[lastOpenNodes_index];
 
 const cache = {}; // calcPercentageV2 uses this
-
 /**
  * This function was copied from the RISE explorer
  * @param {*} delegates 
- * I modified it to return everything including the probability of forging
+ * I modified it to return everything including the probability of forging,
+ * and my custom propeties from DelegateStats
  */
-function calcPercentageV2(delegates) {
+export function calcPercentageV2(delegates: IDelegate[]): any[] {
   //if (cache[round].percentages) {
   //  return cache[round].percentages;
   //}
@@ -43,15 +22,15 @@ function calcPercentageV2(delegates) {
     .map(d => new BigNumber(d.vote))
     .reduce((a, b) => a.plus(b));
 
-  const probByslotDel = [];
+  const probByslotDel: any[] = [];
   probByslotDel[0] = delegates
-    .map(d => new BigNumber(d.vote).dividedBy(totalWeight));
+    .map(d => new BigNumber (d.vote).dividedBy(totalWeight));
 
   const cumulativeProbPerDelegates = delegates
     .map(d => new BigNumber(d.vote).dividedBy(totalWeight));
 
   let totalUsedWeightInPrevSlots = new BigNumber(0);
-  for (let slot = 1; slot < N; slot++) {
+  for (let slot = 1; slot < ChainConfig.N; slot++) {
     // Build previous slot used weight
     const usedWeightInPrevSlot = delegates
       .map((d, idx) => probByslotDel[slot - 1][idx].multipliedBy(d.vote))
@@ -74,28 +53,32 @@ function calcPercentageV2(delegates) {
     }
   }
 
-  const toRet = [];
+  const toRet: DelegateStats[] = [];
   for (let i = 0; i < delegates.length; i++) {
     const includedProbability = cumulativeProbPerDelegates[i].multipliedBy(100).toFixed(3);
     toRet.push({
       ...delegates[i],
       includedProbability,
+      // All these bellow are null because we will update them later
+      uptime: null,
+      afp: null,
+      allocatedBlocks: null
     });
   }
   //cache[round].percentages = toRet;
   return toRet;
 };
 
-function getSnapshot() {
-  logger.log('Getting new snapshot..')
+export function getSnapshot() {
+  logger.log('Getting new snapshot..');
   rise.blocks.getHeight().then(res => {
     if (res.success) {
-      let round = Math.ceil(res.height / N);
+      let round = Math.ceil(res.height / ChainConfig.N);
       return rise.delegates.getList({
-        limit: M // Limit to the current least ranking currently allowed to be selected
+        limit: ChainConfig.M // Limit to the current least ranking currently allowed to be selected
       }).then(res => {
         logger.log('Delegates data gotten..')
-        let delegates = calcPercentageV2(res.delegates);
+        let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the formaer shape
         logger.log('Adding new params to delegates')
         // Add new parameters to the delegates
         delegates.forEach(delegate => {
@@ -111,7 +94,7 @@ function getSnapshot() {
           logger.log('Snapshot saved')
         });
         // Run again after the next round
-        setTimeout(getSnapshot, roundInterval);
+        setTimeout(getSnapshot, ChainConfig.roundInterval);
       }).catch(err => {
         // Send an email to levi@techypharm.com about the error
         logger.error(err);
@@ -135,17 +118,14 @@ function getSnapshot() {
  */
 function retry_getSnapshot() {
   // Cycle through avail node options
-  lastOpenNodes_index++;
-  if (lastOpenNodes_index >= openNodes.length) {
+  OpenNodes.lastOpenNodes_index++;
+  if (OpenNodes.lastOpenNodes_index >= OpenNodes.openNodes.length) {
     rise.nodeAddress = 'http://localhost:5555';
-    lastOpenNodes_index = -1; // Set to -1 so that when nretry_getSnapshot() is called, the value of lastOpenNodes_index will be 0
+    OpenNodes.lastOpenNodes_index = -1; // Set to -1 so that when nretry_getSnapshot() is called, the value of OpenNodes.lastOpenNodes_index will be 0
   } else {
-    rise.nodeAddress = openNodes[lastOpenNodes_index]
+    rise.nodeAddress = OpenNodes.openNodes[OpenNodes.lastOpenNodes_index]
   }
 
-  logger.log('Retrying..@index:', lastOpenNodes_index, 'openNodes.length is', openNodes.length);
-  setTimeout(getSnapshot, RETRY_INTERVAL);
+  logger.log('Retrying..@index:', OpenNodes.lastOpenNodes_index, 'OpenNodes.openNodes.length is', OpenNodes.openNodes.length);
+  setTimeout(getSnapshot, ChainConfig.RETRY_INTERVAL);
 }
-
-// Start
-getSnapshot();
