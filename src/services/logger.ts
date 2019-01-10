@@ -8,7 +8,12 @@ class Logger{
 
   error(...args: any[]): void{
     //let args = [`${moment().format()}:`].concat(Array.from(arguments));
-    console.log(...args);
+    console.error(...args);
+  }
+
+  trace(...args: any[]): void{
+    //let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    console.trace(...args);
   }
 }
 
