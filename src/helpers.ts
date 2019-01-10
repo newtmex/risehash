@@ -8,6 +8,7 @@ import { OpenNodes } from "./openNodes";
 import { MongoError } from "mongodb";
 import { MongooseDocument } from "mongoose";
 import { ISnapshotModel } from "./interfaces/Snapshot.interface";
+import moment = require("moment");
 
 
 const cache = {}; // calcPercentageV2 uses this
@@ -150,10 +151,11 @@ function handle_MongoError(obj: { err: MongoError, doc: MongooseDocument }): voi
         .then((snapshots: ISnapshotModel[]) => {
           let snapshot = snapshots[0];
           let elapsedTime = Date.now() - (new Date(snapshot.createdAt).getTime());
-          let timeToNextRound = ChainConfig.roundInterval - elapsedTime;
+          // get timeToNextRound relative to the last time a round was meant to occur
+          let timeToNextRound = ChainConfig.roundInterval - (elapsedTime % ChainConfig.roundInterval);
           // Shedule the call to getSnapshot at the appropriate time
           setTimeout(getSnapshot, timeToNextRound);
-          logger.log({ timeToNextRound }, '\n');
+          logger.log(`timeToNextRound: ${moment().to(Date.now() + timeToNextRound, true)}\n`);
         })
     }
   }
