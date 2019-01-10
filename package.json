@@ -2,7 +2,7 @@
   "name": "risehash",
   "version": "1.0.0",
   "description": "An application that stores all data concerning RISE delegates' performance and tools to analyse such data.",
-  "main": "risehash_app.js",
+  "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "gulp && node dist/app.js"
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/bignumber.js": "^5.0.0",
+    "@types/mongodb": "^3.1.18",
     "@types/mongoose": "^5.3.7",
     "gulp": "^4.0.0",
     "gulp-typescript": "^5.0.0",

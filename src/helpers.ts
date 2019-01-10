@@ -5,6 +5,9 @@ import { logger } from './services/logger'
 import { DelegateStats, IDelegate } from "./interfaces/Delegate.interface";
 import { Snapshot } from "./models/Snapshot.model";
 import { OpenNodes } from "./openNodes";
+import { MongoError } from "mongodb";
+import { MongooseDocument } from "mongoose";
+import { ISnapshotModel } from "./interfaces/Snapshot.interface";
 
 
 const cache = {}; // calcPercentageV2 uses this
@@ -14,7 +17,7 @@ const cache = {}; // calcPercentageV2 uses this
  * I modified it to return everything including the probability of forging,
  * and my custom propeties from DelegateStats
  */
-export function calcPercentageV2(delegates: IDelegate[]): any[] {
+function calcPercentageV2(delegates: IDelegate[]): any[] {
   //if (cache[round].percentages) {
   //  return cache[round].percentages;
   //}
@@ -24,7 +27,7 @@ export function calcPercentageV2(delegates: IDelegate[]): any[] {
 
   const probByslotDel: any[] = [];
   probByslotDel[0] = delegates
-    .map(d => new BigNumber (d.vote).dividedBy(totalWeight));
+    .map(d => new BigNumber(d.vote).dividedBy(totalWeight));
 
   const cumulativeProbPerDelegates = delegates
     .map(d => new BigNumber(d.vote).dividedBy(totalWeight));
@@ -70,7 +73,7 @@ export function calcPercentageV2(delegates: IDelegate[]): any[] {
 };
 
 export function getSnapshot() {
-  logger.log('Getting new snapshot..');
+  logger.log(`Getting new snapshot..from: ${rise.nodeAddress}`);
   rise.blocks.getHeight().then(res => {
     if (res.success) {
       let round = Math.ceil(res.height / ChainConfig.N);
@@ -78,36 +81,35 @@ export function getSnapshot() {
         limit: ChainConfig.M // Limit to the current least ranking currently allowed to be selected
       }).then(res => {
         logger.log('Delegates data gotten..')
-        let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the formaer shape
-        logger.log('Adding new params to delegates')
+        let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the former shape
         // Add new parameters to the delegates
         delegates.forEach(delegate => {
-          delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks
-          delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks
-        })
-        logger.log('Params added..')
+          delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks;
+          delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks;
+        });
+        logger.log('New params added..');
         // Store the snapshot
         let snapshot = new Snapshot({ round, delegates });
-        logger.log('Saving snapshot..')
-        snapshot.save((err, snapshot) => {
-          if (err) return logger.log('Failed to save snapshot:', err.errmsg);
-          logger.log('Snapshot saved')
+        logger.log('Saving snapshot..');
+        snapshot.save((err) => {
+          if (err) return handle_MongoError({ err, doc: snapshot });
+          logger.log('Snapshot saved\n');
+          // Run again after the next round
+          setTimeout(getSnapshot, ChainConfig.roundInterval);
         });
-        // Run again after the next round
-        setTimeout(getSnapshot, ChainConfig.roundInterval);
       }).catch(err => {
         // Send an email to levi@techypharm.com about the error
         logger.error(err);
         retry_getSnapshot();
-      })
+      });
     }
-    logger.error('Failed to get blocks..')
+    logger.error('Failed to get blocks..');
     // Retry
-    logger.log('Retrying..')
-    getSnapshot()
+    logger.log('Retrying..');
+    getSnapshot();
   }).catch(err => {
     logger.error(err);
-    retry_getSnapshot()
+    retry_getSnapshot();
   })
 }
 
@@ -128,4 +130,31 @@ function retry_getSnapshot() {
 
   logger.log('Retrying..@index:', OpenNodes.lastOpenNodes_index, 'OpenNodes.openNodes.length is', OpenNodes.openNodes.length);
   setTimeout(getSnapshot, ChainConfig.RETRY_INTERVAL);
+}
+
+/**
+ * Handles MongoError by taking appropriate action based on the
+ * conditions @condition[number] bellow
+ * @param obj : { err: MongoError, doc: MongooseDocument }
+ * @condition[0] : Calls @function getSnapshot() after adjusted timeout of @var timeToNextRound
+ */
+function handle_MongoError(obj: { err: MongoError, doc: MongooseDocument }): void {
+  if (obj.err.code == 11000) {
+    // DUPLICATE KEY ISH
+    logger.error('Duplicate key.');
+
+    if (obj.doc.get('round')) { // If a snapshot document
+      // Adjust the time to request for the next snapshot, then continue the sequence as usual
+      logger.log('Adjusting time to request for the next snapshot.');
+      Snapshot.find({ round: obj.doc.get('round') }) // Find the snapshot that prevented this duplicate from
+        .then((snapshots: ISnapshotModel[]) => {
+          let snapshot = snapshots[0];
+          let elapsedTime = Date.now() - (new Date(snapshot.createdAt).getTime());
+          let timeToNextRound = ChainConfig.roundInterval - elapsedTime;
+          // Shedule the call to getSnapshot at the appropriate time
+          setTimeout(getSnapshot, timeToNextRound);
+          logger.log({ timeToNextRound }, '\n');
+        })
+    }
+  }
 }

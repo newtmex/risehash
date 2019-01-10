@@ -2,17 +2,17 @@ import * as moment from 'moment';
 
 class Logger{
   log(...args: any[]): void{
-    //let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    args = [`${moment().format()}:`].concat(Array.from(args));
     console.log(...args);
   }
 
   error(...args: any[]): void{
-    //let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    args = [`${moment().format()}:`].concat(Array.from(args));
     console.error(...args);
   }
 
   trace(...args: any[]): void{
-    //let args = [`${moment().format()}:`].concat(Array.from(arguments));
+    args = [`${moment().format()}:`].concat(Array.from(args));
     console.trace(...args);
   }
 }
