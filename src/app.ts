@@ -4,7 +4,10 @@ import { connect as dbConnect } from "mongoose";
 import { OpenNodes } from "./openNodes";
 import { getSnapshot } from "./helpers";
 
-logger.log('Starting app\n\n');
+logger.log('Starting app\n#####');
+process.on('SIGINT', () => {
+  logger.log('Stopped app\n');
+});
 
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
