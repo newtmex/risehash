@@ -21,7 +21,7 @@ module.exports = {
       ref  : 'origin/master',
       repo : 'git@github.com:newtmex/risehash.git',
       path : '/var/www/risehash',
-      'post-deploy' : 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+      'post-deploy' : 'npm install && npm run build'
     }
   }
 };

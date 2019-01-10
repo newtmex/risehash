@@ -78,36 +78,49 @@ export function getSnapshot() {
   rise.blocks.getHeight().then(res => {
     if (res.success) {
       let round = Math.ceil(res.height / ChainConfig.N);
-      return rise.delegates.getList({
-        limit: ChainConfig.M // Limit to the current least ranking currently allowed to be selected
-      }).then(res => {
-        logger.log('Delegates data gotten..')
-        let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the former shape
-        // Add new parameters to the delegates
-        delegates.forEach(delegate => {
-          delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks;
-          delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks;
-        });
-        logger.log('New params added..');
-        // Store the snapshot
-        let snapshot = new Snapshot({ round, delegates });
-        logger.log('Saving snapshot..');
-        snapshot.save((err) => {
-          if (err) return handle_MongoError({ err, doc: snapshot });
-          logger.log('Snapshot saved\n');
-          // Run again after the next round
-          setTimeout(getSnapshot, ChainConfig.roundInterval);
-        });
-      }).catch(err => {
-        // Send an email to levi@techypharm.com about the error
-        logger.error(err);
-        retry_getSnapshot();
+      // Check if the round exists already
+      Snapshot.find({ round: round }).then((snapshots: ISnapshotModel[]) => {
+        if (snapshots[0].round == round) { // Duplicate round
+          logger.log('Duplicate round gotten. Adjusting time to request for the next snapshot.');
+          let snapshot = snapshots[0];
+          let elapsedTime = Date.now() - (new Date(snapshot.createdAt).getTime());
+          // get timeToNextRound relative to the last time a round was meant to occur
+          let timeToNextRound = ChainConfig.roundInterval - (elapsedTime % ChainConfig.roundInterval);
+          // Shedule the call to getSnapshot at the appropriate time
+          setTimeout(getSnapshot, timeToNextRound);
+          logger.log(`timeToNextRound: ${moment().to(Date.now() + timeToNextRound, true)}\n`);
+        } else { // Not duplicate round
+          rise.delegates.getList({ limit: ChainConfig.M }).then(res => {
+            logger.log('Delegates data gotten..')
+            let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the former shape
+            // Add new parameters to the delegates
+            delegates.forEach(delegate => {
+              delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks;
+              delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks;
+            });
+            logger.log('New params added..');
+            // Store the snapshot
+            let snapshot = new Snapshot({ round, delegates });
+            logger.log('Saving snapshot..');
+            snapshot.save((err) => {
+              if (err) return handle_MongoError({ err, doc: snapshot });
+              logger.log('Snapshot saved\n');
+              // Run again after the next round
+              setTimeout(getSnapshot, ChainConfig.roundInterval);
+            });
+          }).catch(err => {
+            // Send an email to levi@techypharm.com about the error
+            logger.error(err);
+            retry_getSnapshot();
+          });
+        }
       });
+    } else {
+      logger.error('Failed to get blocks..');
+      // Retry
+      logger.log('Retrying..');
+      getSnapshot();
     }
-    logger.error('Failed to get blocks..');
-    // Retry
-    logger.log('Retrying..');
-    getSnapshot();
   }).catch(err => {
     logger.error(err);
     retry_getSnapshot();
@@ -158,5 +171,8 @@ function handle_MongoError(obj: { err: MongoError, doc: MongooseDocument }): voi
           logger.log(`timeToNextRound: ${moment().to(Date.now() + timeToNextRound, true)}\n`);
         })
     }
+  } else {
+    logger.log('Uknown error:', obj.err.errmsg);
+    // TODO: Send email to me
   }
 }
