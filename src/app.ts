@@ -14,7 +14,7 @@ rise.nodeAddress = process.env.NODE_ENV == 'production' ?
 
 let dbConnection = dbConnect('mongodb://localhost/risehash', { useNewUrlParser: true });
 dbConnection.then(res => {
-  logger.log('Database connected successfully.')
+  logger.log('Database connected successfully.');
   // Begin
   getSnapshot();
 }).catch(err => {
