@@ -79,8 +79,35 @@ export function getSnapshot() {
     if (res.success) {
       let round = Math.ceil(res.height / ChainConfig.N);
       // Check if the round exists already
-      Snapshot.find({ round: round }).then((snapshots: ISnapshotModel[]) => {
-        if (snapshots[0].round == round) { // Duplicate round
+      Snapshot.find({ round: round }, (err, snapshots: ISnapshotModel[]) => {
+        if(err) {
+          logger.log(err);
+          retry_getSnapshot();
+        } else if (!snapshots[0]) { // Not duplicate round
+          rise.delegates.getList({ limit: ChainConfig.M }).then(res => {
+            logger.log('Delegates data gotten..')
+            let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the former shape
+            // Add new parameters to the delegates
+            delegates.forEach(delegate => {
+              delegate.allocatedBlocks = delegate.producedblocks + delegate.missedblocks;
+              delegate.uptime = delegate.producedblocks / delegate.allocatedBlocks;
+            });
+            logger.log('New params added..');
+            // Store the snapshot
+            let snapshot = new Snapshot({ round, delegates });
+            logger.log('Saving snapshot..');
+            snapshot.save((err) => {
+              if (err) return handle_MongoError({ err, doc: snapshot });
+              logger.log('Snapshot saved\n');
+              // Run again after the next round
+              setTimeout(getSnapshot, ChainConfig.roundInterval);
+            });
+          }).catch(err => {
+            // Send an email to levi@techypharm.com about the error
+            logger.error(err);
+            retry_getSnapshot();
+          });
+        } else if (snapshots[0].round && snapshots[0].round == round) { // Duplicate round
           logger.log('Duplicate round gotten. Adjusting time to request for the next snapshot.');
           let snapshot = snapshots[0];
           let elapsedTime = Date.now() - (new Date(snapshot.createdAt).getTime());
@@ -89,7 +116,9 @@ export function getSnapshot() {
           // Shedule the call to getSnapshot at the appropriate time
           setTimeout(getSnapshot, timeToNextRound);
           logger.log(`timeToNextRound: ${moment().to(Date.now() + timeToNextRound, true)}\n`);
-        } else { // Not duplicate round
+        } else { 
+          logger.log('UKWON CONDITION! PLEASE CHECK THIS OUT!!');
+          // CONTINUE AS USUAL
           rise.delegates.getList({ limit: ChainConfig.M }).then(res => {
             logger.log('Delegates data gotten..')
             let delegates: DelegateStats[] = calcPercentageV2(<IDelegate[]>res.delegates); // Typed to IDelegate as that's the current shape, type Delegate is the former shape
