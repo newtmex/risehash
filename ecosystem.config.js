@@ -17,10 +17,10 @@ module.exports = {
   deploy : {
     production : {
       user : 'rise',
-      host : '139.162.193.60',
+      host : '104.207.130.86',
       ref  : 'origin/master',
       repo : 'git@github.com:newtmex/risehash.git',
-      path : '/var/www/risehash',
+      path : '/home/rise/risehash',
       'post-deploy' : 'npm install && npm run build'
     }
   }

@@ -4,3 +4,4 @@ dist
 resources.md
 test.js
 test
+ecosystem.config.js
