@@ -11,9 +11,9 @@ process.on('SIGINT', () => {
 
 // Select one of the nodes that their api is enabled
 // or use localhost if in production
-rise.nodeAddress = process.env.NODE_ENV == 'production' ?
-  'http://localhost:5555' :
-  OpenNodes.openNodes[OpenNodes.lastOpenNodes_index];
+rise.nodeAddress = '127.0.0.1:10003'; // process.env.NODE_ENV == 'production' ?
+ // 'http://localhost:5555' :
+ // OpenNodes.openNodes[OpenNodes.lastOpenNodes_index];
 
 let dbConnection = dbConnect('mongodb://localhost/risehash', { useNewUrlParser: true });
 dbConnection.then(res => {
